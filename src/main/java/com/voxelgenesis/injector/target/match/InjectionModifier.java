@@ -22,17 +22,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.voxelgenesis.injector;
+package com.voxelgenesis.injector.target.match;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.spongepowered.despector.ast.stmt.Statement;
 
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Injector {
+import java.util.List;
 
-    Class<?> value();
+public interface InjectionModifier {
+
+    void apply(List<Statement> statements, int start, int end);
 
 }

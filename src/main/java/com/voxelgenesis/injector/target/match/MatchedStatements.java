@@ -22,17 +22,46 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.voxelgenesis.injector;
+package com.voxelgenesis.injector.target.match;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import org.spongepowered.despector.ast.stmt.Statement;
+import org.spongepowered.despector.ast.stmt.StatementBlock;
 
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Injector {
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
-    Class<?> value();
+public class MatchedStatements {
+
+    private final InjectionMatcher point;
+    private final StatementBlock block;
+    private final List<Statement> matched = new ArrayList<>();
+    private final List<Statement> modified = new ArrayList<>();
+
+    public MatchedStatements(InjectionMatcher point, StatementBlock block, Collection<Statement> stmt) {
+        this.point = point;
+        this.block = block;
+        this.matched.addAll(stmt);
+    }
+
+    public InjectionMatcher getMatcher() {
+        return this.point;
+    }
+    
+    public StatementBlock getBlock() {
+        return this.block;
+    }
+
+    public List<Statement> getStatements() {
+        return this.matched;
+    }
+
+    public void markModified(Statement stmt) {
+        this.modified.add(stmt);
+    }
+
+    public List<Statement> getModified() {
+        return this.modified;
+    }
 
 }

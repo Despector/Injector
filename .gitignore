@@ -1,20 +1,16 @@
 # Eclipse stuff
-.classpath
-.project
-.settings/
+/.classpath
+/.project
+/.settings/
 
 # netbeans
-nbproject
-
-# maven
-/*/target/
-target/
+/nbproject
 
 # gradle
-.gradle/
+/.gradle/
 
 # vim
-.*.sw[a-p]
+/.*.sw[a-p]
 
 # various other potential build files
 /*/build/
@@ -31,13 +27,11 @@ target/
 *.iml
 *.ipr
 *.iws
-.idea/
-out/
+/.idea/
+/out/
 
-.checkstyle
+/.checkstyle
 
-# Testfiles
-test.sh
 /bin/
 /build/
 /run/

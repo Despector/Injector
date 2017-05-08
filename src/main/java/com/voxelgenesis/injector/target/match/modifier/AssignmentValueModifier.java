@@ -22,17 +22,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.voxelgenesis.injector;
+package com.voxelgenesis.injector.target.match.modifier;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.voxelgenesis.injector.target.match.InjectionModifier;
+import org.spongepowered.despector.ast.insn.Instruction;
+import org.spongepowered.despector.ast.stmt.Statement;
+import org.spongepowered.despector.ast.stmt.assign.Assignment;
 
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface Injector {
+import java.util.List;
 
-    Class<?> value();
+public class AssignmentValueModifier implements InjectionModifier {
+
+    private final Instruction replacement;
+
+    public AssignmentValueModifier(Instruction replacement) {
+        this.replacement = replacement;
+    }
+
+    @Override
+    public void apply(List<Statement> statements, int start, int end) {
+        Assignment stmt = ((Assignment) statements.get(start));
+        stmt.setValue(this.replacement);
+    }
 
 }
