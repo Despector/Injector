@@ -55,8 +55,7 @@ public class MatchParser {
     }
 
     private static StatementMatcher<?> parseStatement(ParseState state, MethodEntry mth) {
-
-        String ident = state.nextType();
+        String ident = state.nextIdentifier(ParseState.TYPE);
         if (ident != null) {
             state.skipWhitespace();
             String name = state.nextIdentifier(ParseState.ALPHA_NUMERIC);
@@ -88,7 +87,34 @@ public class MatchParser {
     }
 
     private static TypeSignature getType(String type) {
-        return SignatureParser.parseFieldTypeSignature(type);
+        StringBuilder sig = new StringBuilder();
+        while (type.endsWith("[]")) {
+            sig.append("[");
+            type = type.substring(0, type.length() - 2);
+        }
+        if (type.equals("byte")) {
+            sig.append("B");
+        } else if (type.equals("short")) {
+            sig.append("S");
+        } else if (type.equals("int")) {
+            sig.append("I");
+        } else if (type.equals("long")) {
+            sig.append("J");
+        } else if (type.equals("float")) {
+            sig.append("F");
+        } else if (type.equals("double")) {
+            sig.append("D");
+        } else if (type.equals("char")) {
+            sig.append("C");
+        } else if (type.equals("boolean")) {
+            sig.append("Z");
+        } else {
+            sig.append("L");
+            sig.append(type.replace('.', '/'));
+            sig.append(";");
+        }
+        // TODO generics
+        return SignatureParser.parseFieldTypeSignature(sig.toString());
     }
 
     private static Instruction getValue(MethodEntry mth) {

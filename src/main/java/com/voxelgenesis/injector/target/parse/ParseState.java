@@ -35,7 +35,6 @@ public class ParseState {
     public static final BitSet ALPHA;
     public static final BitSet NUMERIC;
     public static final BitSet ALPHA_NUMERIC;
-    public static final BitSet PRIMATIVES;
     public static final BitSet TYPE;
 
     private final String str;
@@ -114,17 +113,6 @@ public class ParseState {
         return found;
     }
 
-    public String nextType() {
-        char n = peek();
-        if (PRIMATIVES.get(n)) {
-            return n + "";
-        }
-        expect('L');
-        String val = nextIdentifier(TYPE);
-        expect(';');
-        return "L" + val + ";";
-    }
-
     public String nextIdentifier(BitSet character_set) {
         char next = peek();
         StringBuilder ident = new StringBuilder();
@@ -160,18 +148,9 @@ public class ParseState {
         ALPHA_NUMERIC = new BitSet();
         ALPHA_NUMERIC.or(ALPHA);
         ALPHA_NUMERIC.or(NUMERIC);
-        PRIMATIVES = new BitSet();
-        PRIMATIVES.set('B');
-        PRIMATIVES.set('S');
-        PRIMATIVES.set('I');
-        PRIMATIVES.set('J');
-        PRIMATIVES.set('F');
-        PRIMATIVES.set('D');
-        PRIMATIVES.set('Z');
-        PRIMATIVES.set('C');
         TYPE = new BitSet();
         TYPE.or(ALPHA_NUMERIC);
-        TYPE.set('/');
+        TYPE.set('.');
     }
 
 }
