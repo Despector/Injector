@@ -22,30 +22,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.voxelgenesis.injector.target.match.modifier;
+package com.voxelgenesis.injector.target.parse;
 
-import com.voxelgenesis.injector.target.match.InjectionModifier;
-import org.spongepowered.despector.ast.insn.Instruction;
-import org.spongepowered.despector.ast.stmt.Statement;
-import org.spongepowered.despector.ast.stmt.assign.Assignment;
-import org.spongepowered.despector.transform.matcher.InstructionMatcher;
+public class ParseToken {
 
-import java.util.List;
+    private final TokenType type;
+    private final String token;
 
-public class AssignmentValueModifier implements InjectionModifier {
-
-    private final Instruction replacement;
-    private final InstructionMatcher<?> matcher;
-
-    public AssignmentValueModifier(Instruction replacement, InstructionMatcher<?> matcher) {
-        this.replacement = replacement;
-        this.matcher = matcher;
+    public ParseToken(TokenType type) {
+        this.type = type;
+        this.token = null;
     }
 
-    @Override
-    public void apply(List<Statement> statements, int start, int end) {
-        Assignment stmt = ((Assignment) statements.get(start));
-        stmt.setValue(InstructionReplaceMatcher.replaceInValue(stmt.getValue(), this.matcher, this.replacement));
+    public ParseToken(TokenType type, String s) {
+        this.type = type;
+        this.token = s;
+    }
+
+    public TokenType getType() {
+        return this.type;
+    }
+
+    public String getToken() {
+        return this.token;
     }
 
 }

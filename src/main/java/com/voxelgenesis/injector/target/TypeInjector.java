@@ -66,7 +66,7 @@ public class TypeInjector {
                     itarget = new InjectionTarget(target);
                     this.targets.put(target, itarget);
                 }
-                InjectionMatcher imatcher = MatchParser.parse(matcher, mth);
+                InjectionMatcher imatcher = new MatchParser(matcher, mth).parse();
                 itarget.addInjection(imatcher);
             }
         }

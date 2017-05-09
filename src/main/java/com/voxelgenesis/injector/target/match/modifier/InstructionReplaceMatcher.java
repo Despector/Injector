@@ -24,28 +24,29 @@
  */
 package com.voxelgenesis.injector.target.match.modifier;
 
-import com.voxelgenesis.injector.target.match.InjectionModifier;
 import org.spongepowered.despector.ast.insn.Instruction;
-import org.spongepowered.despector.ast.stmt.Statement;
-import org.spongepowered.despector.ast.stmt.assign.Assignment;
 import org.spongepowered.despector.transform.matcher.InstructionMatcher;
+import org.spongepowered.despector.transform.matcher.MatchContext;
 
-import java.util.List;
+public class InstructionReplaceMatcher<T extends Instruction> implements InstructionMatcher<T> {
 
-public class AssignmentValueModifier implements InjectionModifier {
+    private final InstructionMatcher<T> child;
 
-    private final Instruction replacement;
-    private final InstructionMatcher<?> matcher;
-
-    public AssignmentValueModifier(Instruction replacement, InstructionMatcher<?> matcher) {
-        this.replacement = replacement;
-        this.matcher = matcher;
+    public InstructionReplaceMatcher(InstructionMatcher<T> child) {
+        this.child = child;
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public void apply(List<Statement> statements, int start, int end) {
-        Assignment stmt = ((Assignment) statements.get(start));
-        stmt.setValue(InstructionReplaceMatcher.replaceInValue(stmt.getValue(), this.matcher, this.replacement));
+    public T match(MatchContext ctx, Instruction insn) {
+        return this.child == null ? (T) insn : this.child.match(insn);
+    }
+
+    public static Instruction replaceInValue(Instruction value, InstructionMatcher<?> root_matcher, Instruction replacement) {
+        if (root_matcher instanceof InstructionReplaceMatcher) {
+            return replacement;
+        }
+        throw new IllegalStateException("Unsupported matcher " + root_matcher.getClass().getName());
     }
 
 }

@@ -24,103 +24,87 @@
  */
 package com.voxelgenesis.injector.target.parse;
 
+import static com.voxelgenesis.injector.target.parse.TokenType.*;
+
 import com.voxelgenesis.injector.target.match.InjectionMatcher;
-import com.voxelgenesis.injector.target.match.modifier.AssignmentValueModifier;
-import org.spongepowered.despector.ast.generic.TypeSignature;
-import org.spongepowered.despector.ast.insn.Instruction;
-import org.spongepowered.despector.ast.stmt.misc.Return;
+import com.voxelgenesis.injector.target.match.InjectionModifier;
+import com.voxelgenesis.injector.target.match.modifier.InstructionReplaceMatcher;
 import org.spongepowered.despector.ast.type.MethodEntry;
 import org.spongepowered.despector.transform.matcher.InstructionMatcher;
 import org.spongepowered.despector.transform.matcher.StatementMatcher;
-import org.spongepowered.despector.util.SignatureParser;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MatchParser {
 
-    public static InjectionMatcher parse(String matcher, MethodEntry mth) {
-        ParseState state = new ParseState(matcher);
-        List<StatementMatcher<?>> matchers = new ArrayList<>();
-        state.skipWhitespace();
-        while (!state.isFinished()) {
-            matchers.add(parseStatement(state, mth));
-            state.skipWhitespace();
-            state.incrementStatement();
-        }
-        if (state.getModifier() == null) {
-            throw new IllegalStateException("No modifier found");
-        }
-        return new InjectionMatcher(matchers, state.getModifier(), state.getStart(), state.getEnd());
+    private final Lexer lexer;
+    private final MethodEntry injector;
+
+    private InjectionModifier modifier;
+    private int start, end;
+
+    public MatchParser(String str, MethodEntry mth) {
+        this.lexer = new Lexer(str);
+        this.injector = mth;
     }
 
-    private static StatementMatcher<?> parseStatement(ParseState state, MethodEntry mth) {
-        String ident = state.nextIdentifier(ParseState.TYPE);
-        if (ident != null) {
-            state.skipWhitespace();
-            String name = state.nextIdentifier(ParseState.ALPHA_NUMERIC);
-            if (name != null) {
-                state.skipWhitespace();
-                if (state.peek() == '=') {
-                    state.skip(1);
-                    state.skipWhitespace();
-                    InstructionMatcher<?> val;
-                    if (state.peek() == '$') {
-                        state.skip(1);
-                        state.setModifier(new AssignmentValueModifier(getValue(mth)));
-                        val = InstructionMatcher.ANY;
-                    } else {
-                        val = parseInstruction(state, mth);
-                    }
-                    state.expect(';');
-                    return StatementMatcher.localassign().type(getType(ident)).value(val).build();
+    private void error(String msg) {
+        // TODO add line and character information for debugging
+        throw new IllegalStateException(msg);
+    }
+
+    private void expect(TokenType type) {
+        TokenType actual = this.lexer.pop().getType();
+        if (actual != type) {
+            error("Expected " + type.name() + " but whats " + actual.name());
+        }
+    }
+
+    public InjectionMatcher parse() {
+        List<StatementMatcher<?>> matchers = new ArrayList<>();
+
+        while (this.lexer.hasNext()) {
+            matchers.add(parseStatement());
+        }
+
+        return new InjectionMatcher(matchers, this.modifier, this.start, this.end);
+    }
+    
+    private StatementMatcher<?> parseStatement() {
+        // TODO:
+        // Should just parse the code to a parallel ast and write something
+        // to compare asts rather than using the matchers. the replacement
+        // could then just be done by walking the ast and looking for the
+        // instruction marking the region being replaced.
+        if (this.lexer.peekType() == IDENTIFIER) {
+            ParseToken first = this.lexer.pop();
+            if (this.lexer.peekType() == IDENTIFIER) {
+                ParseToken name = this.lexer.pop();
+                if (this.lexer.peekType() == EQUALS) {
+                    this.lexer.pop();
+//                    return StatementMatcher.localAssign().type(type)
                 }
             }
         }
-        state.error("Expected statement");
+
         return null;
     }
 
-    private static InstructionMatcher<?> parseInstruction(ParseState state, MethodEntry mth) {
-        state.error("Expected instruction");
+    private InstructionMatcher<?> parseInstruction() {
+        if (this.lexer.peekType() == INJECTION_REPLACE) {
+            this.lexer.pop();
+            if (this.lexer.peekType() == INJECTION_REPLACE) {
+                return new InstructionReplaceMatcher<>(null);
+            } else if (this.lexer.peekType() == LEFT_PAREN) {
+                InstructionMatcher<?> child = parseInstruction();
+                expect(RIGHT_PAREN);
+                return new InstructionReplaceMatcher<>(child);
+            } else {
+                error("Expected injection child");
+            }
+        }
         return null;
     }
 
-    private static TypeSignature getType(String type) {
-        StringBuilder sig = new StringBuilder();
-        while (type.endsWith("[]")) {
-            sig.append("[");
-            type = type.substring(0, type.length() - 2);
-        }
-        if (type.equals("byte")) {
-            sig.append("B");
-        } else if (type.equals("short")) {
-            sig.append("S");
-        } else if (type.equals("int")) {
-            sig.append("I");
-        } else if (type.equals("long")) {
-            sig.append("J");
-        } else if (type.equals("float")) {
-            sig.append("F");
-        } else if (type.equals("double")) {
-            sig.append("D");
-        } else if (type.equals("char")) {
-            sig.append("C");
-        } else if (type.equals("boolean")) {
-            sig.append("Z");
-        } else {
-            sig.append("L");
-            sig.append(type.replace('.', '/'));
-            sig.append(";");
-        }
-        // TODO generics
-        return SignatureParser.parseFieldTypeSignature(sig.toString());
-    }
-
-    private static Instruction getValue(MethodEntry mth) {
-        return ((Return) mth.getInstructions().get(0)).getValue().get();
-    }
-
-    private MatchParser() {
-    }
 }
