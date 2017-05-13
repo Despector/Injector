@@ -58,9 +58,6 @@ public class Lexer {
         while (Character.isWhitespace(n) && this.index < this.length) {
             n = this.str.charAt(this.index++);
         }
-        if (this.index >= this.length) {
-            return;
-        }
         if (ALPHA.get(n)) {
             StringBuilder token = new StringBuilder();
             token.append(n);
@@ -110,6 +107,46 @@ public class Lexer {
                 this.index--;
                 this.next = new ParseToken(TokenType.INTEGER, token.toString());
             }
+        } else if (n == '"') {
+            StringBuilder str = new StringBuilder();
+            n = this.str.charAt(this.index++);
+            while (n != '"') {
+                if (n == '\\') {
+                    n = this.str.charAt(this.index++);
+                    switch (n) {
+                    case '"':
+                        str.append('"');
+                        break;
+                    case 'n':
+                        str.append('\n');
+                        break;
+                    case 't':
+                        str.append('\t');
+                        break;
+                    case 'r':
+                        str.append('\r');
+                        break;
+                    case 'b':
+                        str.append('\b');
+                        break;
+                    case 'f':
+                        str.append('\f');
+                        break;
+                    case '\\':
+                        str.append('\\');
+                        break;
+                    case '\'':
+                        str.append('\'');
+                        break;
+                    default:
+                        throw new IllegalStateException("Invalid escape char in stringF '" + n + "'");
+                    }
+                    continue;
+                }
+                str.append(n);
+                n = this.str.charAt(this.index++);
+            }
+            this.next = new ParseToken(TokenType.STRING_CONSTANT, str.toString());
         } else {
             switch (n) {
             case '$':
@@ -133,6 +170,9 @@ public class Lexer {
             case ')':
                 this.next = new ParseToken(TokenType.RIGHT_PAREN);
                 break;
+            case '/':
+                this.next = new ParseToken(TokenType.FORWARD_SLASH);
+                break;
             case '=':
                 char nn = this.str.charAt(this.index);
                 if (nn == '=') {
@@ -154,7 +194,8 @@ public class Lexer {
     }
 
     public TokenType peekType() {
-        return peek().getType();
+        check();
+        return this.next == null ? null : this.next.getType();
     }
 
     public ParseToken peek() {

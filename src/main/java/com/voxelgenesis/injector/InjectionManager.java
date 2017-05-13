@@ -63,6 +63,7 @@ public class InjectionManager {
         File file = new File(path, injector.replace('.', '/') + ".class");
         try {
             TypeEntry type = Decompilers.WILD.decompile(file, this.injector_sourceset);
+            Decompilers.WILD.flushTasks();
             Annotation anno = type.getAnnotation(this.injection_annotation);
             if (anno == null) {
                 System.err.println("Injector " + injector + " is missing the @Injector annotation");

@@ -27,25 +27,23 @@ package com.voxelgenesis.injector.target.match.modifier;
 import com.voxelgenesis.injector.target.match.InjectionModifier;
 import org.spongepowered.despector.ast.insn.Instruction;
 import org.spongepowered.despector.ast.stmt.Statement;
-import org.spongepowered.despector.ast.stmt.assign.Assignment;
-import org.spongepowered.despector.transform.matcher.InstructionMatcher;
+import org.spongepowered.despector.transform.matcher.StatementMatcher;
 
 import java.util.List;
 
 public class AssignmentValueModifier implements InjectionModifier {
 
     private final Instruction replacement;
-    private final InstructionMatcher<?> matcher;
+    private final StatementMatcher<?> matcher;
 
-    public AssignmentValueModifier(Instruction replacement, InstructionMatcher<?> matcher) {
+    public AssignmentValueModifier(Instruction replacement, StatementMatcher<?> matcher) {
         this.replacement = replacement;
         this.matcher = matcher;
     }
 
     @Override
     public void apply(List<Statement> statements, int start, int end) {
-        Assignment stmt = ((Assignment) statements.get(start));
-        stmt.setValue(InstructionReplaceMatcher.replaceInValue(stmt.getValue(), this.matcher, this.replacement));
+        InstructionReplaceMatcher.replaceInStatement(statements.get(start), this.matcher, this.replacement);
     }
 
 }

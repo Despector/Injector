@@ -33,6 +33,7 @@ public enum TokenType {
     FLOAT,
     DOUBLE,
     HEXADECIMAL,
+    STRING_CONSTANT,
 
     EQUALS,
     DOT,
@@ -41,6 +42,7 @@ public enum TokenType {
     COLON,
     RIGHT_PAREN,
     LEFT_PAREN,
+    FORWARD_SLASH,
 
     COMPARE_EQUALS,
 }

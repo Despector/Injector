@@ -44,6 +44,7 @@ public class InjectorTransformer implements IClassTransformer {
         if (injection != null) {
             try {
                 TypeEntry type = Decompilers.JAVA.decompile(new ByteArrayInputStream(basicClass), InjectionManager.get().getSourceSet());
+                Decompilers.JAVA.flushTasks();
                 injection.apply(type);
 
                 ByteArrayOutputStream out = new ByteArrayOutputStream();

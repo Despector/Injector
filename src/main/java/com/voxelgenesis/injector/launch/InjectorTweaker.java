@@ -26,6 +26,7 @@ package com.voxelgenesis.injector.launch;
 
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.LaunchClassLoader;
+import org.spongepowered.despector.config.LibraryConfiguration;
 
 import java.io.File;
 import java.util.List;
@@ -40,7 +41,9 @@ public class InjectorTweaker implements ITweaker {
     @Override
     public void injectIntoClassLoader(LaunchClassLoader cl) {
         cl.addClassLoaderExclusion("com.voxelgenesis.injector");
+        cl.addClassLoaderExclusion("org.spongepowered.despector");
         cl.registerTransformer("com.voxelgenesis.injector.launch.InjectorTransformer");
+        LibraryConfiguration.parallel = false;
     }
 
     @Override
