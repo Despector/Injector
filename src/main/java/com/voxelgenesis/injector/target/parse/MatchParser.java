@@ -28,9 +28,9 @@ import static com.voxelgenesis.injector.target.parse.TokenType.*;
 
 import com.voxelgenesis.injector.target.match.InjectionMatcher;
 import com.voxelgenesis.injector.target.match.InjectionModifier;
+import com.voxelgenesis.injector.target.match.modifier.InstructionReplaceMatcher;
 import com.voxelgenesis.injector.target.match.modifier.InstructionValueModifier;
 import com.voxelgenesis.injector.target.match.modifier.StatementInsertModifier;
-import com.voxelgenesis.injector.target.match.modifier.InstructionReplaceMatcher;
 import org.spongepowered.despector.ast.generic.ClassTypeSignature;
 import org.spongepowered.despector.ast.insn.Instruction;
 import org.spongepowered.despector.ast.stmt.misc.Return;
@@ -41,7 +41,9 @@ import org.spongepowered.despector.transform.matcher.StatementMatcher;
 import org.spongepowered.despector.transform.matcher.instruction.InstanceMethodInvokeMatcher;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class MatchParser {
 
@@ -52,9 +54,17 @@ public class MatchParser {
     private int index = 0;
     private int start, end;
 
+    private final Map<String, String> imports = new HashMap<>();
+
     public MatchParser(String str, MethodEntry mth) {
         this.lexer = new Lexer(str);
         this.injector = mth;
+
+        this.imports.put("String", "Ljava/lang/String;");
+    }
+
+    public void addImport(String key, String clazz) {
+        this.imports.put(key, clazz);
     }
 
     private void error(String msg) {
@@ -100,13 +110,19 @@ public class MatchParser {
             if (this.lexer.peekType() == LEFT_PAREN) {
                 throw new IllegalStateException(); // TODO
             }
-            StringBuilder type = new StringBuilder("L").append(first.getToken());
-            while (this.lexer.peekType() == FORWARD_SLASH) {
-                this.lexer.pop();
-                ParseToken next = expect(TokenType.IDENTIFIER);
-                type.append("/").append(next.getToken());
+            String type = null;
+            if (this.lexer.peekType() == TokenType.FORWARD_SLASH) {
+                StringBuilder str = new StringBuilder("L").append(first.getToken());
+                while (this.lexer.peekType() == FORWARD_SLASH) {
+                    this.lexer.pop();
+                    ParseToken next = expect(TokenType.IDENTIFIER);
+                    str.append("/").append(next.getToken());
+                }
+                str.append(";");
+                type = str.toString();
+            } else {
+                type = this.imports.get(first.getToken());
             }
-            type.append(";");
             if (this.lexer.peekType() == IDENTIFIER) {
                 ParseToken name = this.lexer.pop();
                 if (this.lexer.peekType() == EQUALS) {
@@ -116,6 +132,9 @@ public class MatchParser {
                     return MatchContext.storeLocal(name.getToken(),
                             StatementMatcher.localAssign().type(ClassTypeSignature.of(type.toString())).value(val).build());
                 }
+                throw new IllegalStateException();
+            }
+            if (this.lexer.peekType() != DOT) {
                 throw new IllegalStateException();
             }
             InstructionMatcher<?> owner = null;

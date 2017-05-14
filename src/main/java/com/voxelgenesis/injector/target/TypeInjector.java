@@ -28,10 +28,12 @@ import com.voxelgenesis.injector.target.match.InjectionMatcher;
 import com.voxelgenesis.injector.target.parse.MatchParser;
 import org.spongepowered.despector.ast.Annotation;
 import org.spongepowered.despector.ast.AnnotationType;
+import org.spongepowered.despector.ast.generic.ClassTypeSignature;
 import org.spongepowered.despector.ast.type.MethodEntry;
 import org.spongepowered.despector.ast.type.TypeEntry;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TypeInjector {
@@ -66,7 +68,15 @@ public class TypeInjector {
                     itarget = new InjectionTarget(target);
                     this.targets.put(target, itarget);
                 }
-                InjectionMatcher imatcher = new MatchParser(matcher, mth).parse();
+                MatchParser parser = new MatchParser(matcher, mth);
+                List<ClassTypeSignature> imports = inject.getValue("imports");
+                for (ClassTypeSignature im : imports) {
+                    String type = im.getDescriptor();
+                    type = type.substring(1, type.length() - 1);
+                    String simple = type.substring(type.lastIndexOf('/') + 1);
+                    parser.addImport(simple, im.getDescriptor());
+                }
+                InjectionMatcher imatcher = parser.parse();
                 itarget.addInjection(imatcher);
             }
         }
