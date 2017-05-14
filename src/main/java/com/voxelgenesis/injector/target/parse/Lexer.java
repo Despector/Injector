@@ -150,7 +150,7 @@ public class Lexer {
         } else {
             switch (n) {
             case '$':
-                this.next = new ParseToken(TokenType.INJECTION_REPLACE);
+                this.next = new ParseToken(TokenType.INJECTION_TOKEN);
                 break;
             case ';':
                 this.next = new ParseToken(TokenType.SEMICOLON);

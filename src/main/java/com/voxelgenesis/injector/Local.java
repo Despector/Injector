@@ -22,27 +22,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.voxelgenesis.injector.target.parse;
+package com.voxelgenesis.injector;
 
-public enum TokenType {
-    INJECTION_TOKEN,
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-    IDENTIFIER,
-    INTEGER,
-    LONG,
-    FLOAT,
-    DOUBLE,
-    HEXADECIMAL,
-    STRING_CONSTANT,
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface Local {
 
-    EQUALS,
-    DOT,
-    COMMA,
-    SEMICOLON,
-    COLON,
-    RIGHT_PAREN,
-    LEFT_PAREN,
-    FORWARD_SLASH,
+    String value();
 
-    COMPARE_EQUALS,
 }

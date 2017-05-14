@@ -61,14 +61,14 @@ public class InjectionTarget {
             }
             for (Statement stmt : match.getModified()) {
                 if (!modified.add(stmt)) {
-                    throw new IllegalStateException();
+                    throw new IllegalStateException("Overlapping injectors");
                 }
             }
             matches.add(match);
         }
 
         for (MatchedStatements match : matches) {
-            match.getMatcher().apply(match);
+            match.getMatcher().apply(match, mth);
         }
 
     }

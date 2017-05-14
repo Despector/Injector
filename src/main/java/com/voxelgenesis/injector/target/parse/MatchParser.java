@@ -28,7 +28,8 @@ import static com.voxelgenesis.injector.target.parse.TokenType.*;
 
 import com.voxelgenesis.injector.target.match.InjectionMatcher;
 import com.voxelgenesis.injector.target.match.InjectionModifier;
-import com.voxelgenesis.injector.target.match.modifier.AssignmentValueModifier;
+import com.voxelgenesis.injector.target.match.modifier.InstructionValueModifier;
+import com.voxelgenesis.injector.target.match.modifier.StatementInsertModifier;
 import com.voxelgenesis.injector.target.match.modifier.InstructionReplaceMatcher;
 import org.spongepowered.despector.ast.generic.ClassTypeSignature;
 import org.spongepowered.despector.ast.insn.Instruction;
@@ -74,11 +75,16 @@ public class MatchParser {
 
         while (this.lexer.hasNext()) {
             this.index = matchers.size();
-            matchers.add(parseStatement());
+            StatementMatcher<?> next = parseStatement();
+            if (next != null) {
+                matchers.add(next);
+            }
         }
         InjectionModifier modifier = null;
         if (this.modifier_type == ModifierType.INSTRUCTION_REPLACE) {
-            modifier = new AssignmentValueModifier(getValueReplace(), matchers.get(this.start));
+            modifier = new InstructionValueModifier(getValueReplace(), matchers.get(this.start));
+        } else if (this.modifier_type == ModifierType.STATEMENT_INSERT) {
+            modifier = new StatementInsertModifier(this.injector);
         }
 
         return new InjectionMatcher(matchers, modifier, this.start, this.end);
@@ -140,17 +146,26 @@ public class MatchParser {
             }
             expect(SEMICOLON);
             return StatementMatcher.invoke().value(owner).build();
+        } else if (this.lexer.peekType() == INJECTION_TOKEN) {
+            this.lexer.pop();
+            if (this.lexer.peekType() == INJECTION_TOKEN) {
+                this.lexer.pop();
+                this.modifier_type = ModifierType.STATEMENT_INSERT;
+                this.start = this.end = this.index;
+                expect(SEMICOLON);
+            }
+            return null;
         }
         error("Expected statement");
         return null;
     }
 
     private InstructionMatcher<?> parseInstruction() {
-        if (this.lexer.peekType() == INJECTION_REPLACE) {
+        if (this.lexer.peekType() == INJECTION_TOKEN) {
             this.lexer.pop();
             this.start = this.end = this.index;
             this.modifier_type = ModifierType.INSTRUCTION_REPLACE;
-            if (this.lexer.peekType() == INJECTION_REPLACE) {
+            if (this.lexer.peekType() == INJECTION_TOKEN) {
                 return new InstructionReplaceMatcher<>(null);
             } else if (this.lexer.peekType() == LEFT_PAREN) {
                 this.lexer.pop();
@@ -173,7 +188,8 @@ public class MatchParser {
     }
 
     private static enum ModifierType {
-        INSTRUCTION_REPLACE
+        INSTRUCTION_REPLACE,
+        STATEMENT_INSERT
     }
 
 }

@@ -50,7 +50,7 @@ public class InstructionReplaceMatcher<T extends Instruction> implements Instruc
 
     public static void replaceInStatement(Statement value, StatementMatcher<?> root_matcher, Instruction replacement) {
         if (root_matcher instanceof MatchContext.LocalStoreMatcher) {
-            replaceInStatement(value, ((MatchContext.LocalStoreMatcher) root_matcher).getInternalMatcher(), replacement);
+            replaceInStatement(value, ((MatchContext.LocalStoreMatcher<?>) root_matcher).getInternalMatcher(), replacement);
         } else if (value instanceof LocalAssignment) {
             LocalAssignmentMatcher match = (LocalAssignmentMatcher) root_matcher;
             LocalAssignment assign = (LocalAssignment) value;

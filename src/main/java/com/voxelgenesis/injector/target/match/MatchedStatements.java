@@ -26,6 +26,7 @@ package com.voxelgenesis.injector.target.match;
 
 import org.spongepowered.despector.ast.stmt.Statement;
 import org.spongepowered.despector.ast.stmt.StatementBlock;
+import org.spongepowered.despector.transform.matcher.MatchContext;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -34,12 +35,14 @@ import java.util.List;
 public class MatchedStatements {
 
     private final InjectionMatcher point;
+    private final MatchContext ctx;
     private final StatementBlock block;
     private final List<Statement> matched = new ArrayList<>();
     private final List<Statement> modified = new ArrayList<>();
 
-    public MatchedStatements(InjectionMatcher point, StatementBlock block, Collection<Statement> stmt) {
+    public MatchedStatements(InjectionMatcher point, MatchContext ctx, StatementBlock block, Collection<Statement> stmt) {
         this.point = point;
+        this.ctx = ctx;
         this.block = block;
         this.matched.addAll(stmt);
     }
@@ -47,7 +50,11 @@ public class MatchedStatements {
     public InjectionMatcher getMatcher() {
         return this.point;
     }
-    
+
+    public MatchContext getMatchContext() {
+        return this.ctx;
+    }
+
     public StatementBlock getBlock() {
         return this.block;
     }

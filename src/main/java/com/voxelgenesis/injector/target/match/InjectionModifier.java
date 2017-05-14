@@ -25,11 +25,13 @@
 package com.voxelgenesis.injector.target.match;
 
 import org.spongepowered.despector.ast.stmt.Statement;
+import org.spongepowered.despector.ast.type.MethodEntry;
+import org.spongepowered.despector.transform.matcher.MatchContext;
 
 import java.util.List;
 
 public interface InjectionModifier {
 
-    void apply(List<Statement> statements, int start, int end);
+    void apply(List<Statement> statements, int start, int end, MethodEntry target, MatchContext match);
 
 }

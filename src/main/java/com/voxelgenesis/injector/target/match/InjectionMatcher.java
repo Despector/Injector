@@ -92,7 +92,7 @@ public class InjectionMatcher {
             for (int j = 0; j < this.matcher.size(); j++) {
                 matched.add(block.get(i + j));
             }
-            match = new MatchedStatements(this, block, matched);
+            match = new MatchedStatements(this, ctx, block, matched);
             for (int j = this.start; j <= this.end; j++) {
                 match.markModified(matched.get(j));
             }
@@ -188,9 +188,9 @@ public class InjectionMatcher {
         return match;
     }
 
-    public void apply(MatchedStatements mth) {
+    public void apply(MatchedStatements mth, MethodEntry target) {
         List<Statement> statements = new ArrayList<>(mth.getStatements());
-        this.modifier.apply(statements, this.start, this.end);
+        this.modifier.apply(statements, this.start, this.end, target, mth.getMatchContext());
         List<Statement> backing = mth.getBlock().getStatements();
         int start = backing.indexOf(mth.getStatements().get(0));
         for (Statement s : mth.getStatements()) {
