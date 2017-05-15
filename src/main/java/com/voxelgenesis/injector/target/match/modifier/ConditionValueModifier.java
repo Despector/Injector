@@ -26,31 +26,33 @@ package com.voxelgenesis.injector.target.match.modifier;
 
 import com.voxelgenesis.injector.target.match.InjectionModifier;
 import org.spongepowered.despector.ast.Locals.LocalInstance;
-import org.spongepowered.despector.ast.insn.Instruction;
 import org.spongepowered.despector.ast.insn.condition.Condition;
 import org.spongepowered.despector.ast.stmt.Statement;
 import org.spongepowered.despector.ast.stmt.assign.LocalAssignment;
 import org.spongepowered.despector.ast.stmt.branch.If;
-import org.spongepowered.despector.ast.stmt.misc.Return;
 import org.spongepowered.despector.ast.type.MethodEntry;
 import org.spongepowered.despector.transform.matcher.ConditionMatcher;
 import org.spongepowered.despector.transform.matcher.InstructionMatcher;
 import org.spongepowered.despector.transform.matcher.MatchContext;
 import org.spongepowered.despector.transform.matcher.StatementMatcher;
-import org.spongepowered.despector.transform.matcher.instruction.IntConstantMatcher;
-import org.spongepowered.despector.transform.matcher.instruction.StringConstantMatcher;
-import org.spongepowered.despector.transform.matcher.statement.LocalAssignmentMatcher;
+import org.spongepowered.despector.transform.matcher.statement.IfMatcher;
 import org.spongepowered.despector.util.ConditionUtil;
 
 import java.util.List;
 import java.util.Map;
 
-public class InstructionValueModifier implements InjectionModifier {
+public class ConditionValueModifier implements InjectionModifier {
+
+    private static final StatementMatcher<?> RETURN_TRUE = StatementMatcher.returnValue()
+            .value(InstructionMatcher.intConstant()
+                    .value(1)
+                    .build())
+            .build();
 
     private final MethodEntry replacement;
     private final StatementMatcher<?> matcher;
 
-    public InstructionValueModifier(MethodEntry replacement, StatementMatcher<?> matcher) {
+    public ConditionValueModifier(MethodEntry replacement, StatementMatcher<?> matcher) {
         this.replacement = replacement;
         this.matcher = matcher;
     }
@@ -58,32 +60,32 @@ public class InstructionValueModifier implements InjectionModifier {
     @Override
     public void apply(List<Statement> statements, int start, int end, MethodEntry target, MatchContext match) {
         Map<LocalInstance, LocalInstance> local_translation = StatementInsertModifier.buildLocalTranslation(target, this.replacement, match, start);
-        replaceInStatement(statements.get(start), this.matcher, StatementInsertModifier.translate(getValueReplace(), local_translation));
+        replaceInStatement(statements.get(start), this.matcher, StatementInsertModifier.translate(getConditionReplace(), local_translation));
     }
 
-    private Instruction getValueReplace() {
-        return ((Return) this.replacement.getInstructions().get(0)).getValue().get();
+    private Condition getConditionReplace() {
+        Statement s = this.replacement.getInstructions().get(0);
+        if (s instanceof If) {
+            If iif = (If) s;
+            if (RETURN_TRUE.matches(MatchContext.create(), iif.getBody().get(0))) {
+                return iif.getCondition();
+            }
+            return ConditionUtil.inverse(iif.getCondition());
+        }
+        throw new IllegalStateException();
     }
 
-    public static void replaceInStatement(Statement value, StatementMatcher<?> root_matcher, Instruction replacement) {
+    public static void replaceInStatement(Statement value, StatementMatcher<?> root_matcher, Condition replacement) {
         if (root_matcher instanceof MatchContext.LocalStoreMatcher) {
             replaceInStatement(value, ((MatchContext.LocalStoreMatcher<?>) root_matcher).getInternalMatcher(), replacement);
+        } else if(value instanceof If) {
+            IfMatcher matcher = (IfMatcher) root_matcher;
+            If iif = (If) value;
+            iif.setCondition(replaceInCondition(iif.getCondition(), matcher.getConditionMatcher(), replacement));
         } else if (value instanceof LocalAssignment) {
-            LocalAssignmentMatcher match = (LocalAssignmentMatcher) root_matcher;
-            LocalAssignment assign = (LocalAssignment) value;
-            assign.setValue(replaceInValue(assign.getValue(), match.getValueMatcher(), replacement));
         } else {
             throw new IllegalStateException("Unsupported matcher " + root_matcher.getClass().getName());
         }
-    }
-
-    public static Instruction replaceInValue(Instruction value, InstructionMatcher<?> root_matcher, Instruction replacement) {
-        if (root_matcher instanceof InstructionReplaceMatcher) {
-            return replacement;
-        } else if (root_matcher instanceof StringConstantMatcher || root_matcher instanceof IntConstantMatcher) {
-            return value;
-        }
-        throw new IllegalStateException("Unsupported matcher " + root_matcher.getClass().getName());
     }
 
     public static Condition replaceInCondition(Condition value, ConditionMatcher<?> root_matcher, Condition replacement) {

@@ -25,14 +25,8 @@
 package com.voxelgenesis.injector.target.match.modifier;
 
 import org.spongepowered.despector.ast.insn.Instruction;
-import org.spongepowered.despector.ast.stmt.Statement;
-import org.spongepowered.despector.ast.stmt.assign.LocalAssignment;
 import org.spongepowered.despector.transform.matcher.InstructionMatcher;
 import org.spongepowered.despector.transform.matcher.MatchContext;
-import org.spongepowered.despector.transform.matcher.StatementMatcher;
-import org.spongepowered.despector.transform.matcher.instruction.IntConstantMatcher;
-import org.spongepowered.despector.transform.matcher.instruction.StringConstantMatcher;
-import org.spongepowered.despector.transform.matcher.statement.LocalAssignmentMatcher;
 
 public class InstructionReplaceMatcher<T extends Instruction> implements InstructionMatcher<T> {
 
@@ -45,28 +39,7 @@ public class InstructionReplaceMatcher<T extends Instruction> implements Instruc
     @SuppressWarnings("unchecked")
     @Override
     public T match(MatchContext ctx, Instruction insn) {
-        return this.child == null ? (T) insn : this.child.match(insn);
-    }
-
-    public static void replaceInStatement(Statement value, StatementMatcher<?> root_matcher, Instruction replacement) {
-        if (root_matcher instanceof MatchContext.LocalStoreMatcher) {
-            replaceInStatement(value, ((MatchContext.LocalStoreMatcher<?>) root_matcher).getInternalMatcher(), replacement);
-        } else if (value instanceof LocalAssignment) {
-            LocalAssignmentMatcher match = (LocalAssignmentMatcher) root_matcher;
-            LocalAssignment assign = (LocalAssignment) value;
-            assign.setValue(replaceInValue(assign.getValue(), match.getValueMatcher(), replacement));
-        } else {
-            throw new IllegalStateException("Unsupported matcher " + root_matcher.getClass().getName());
-        }
-    }
-
-    public static Instruction replaceInValue(Instruction value, InstructionMatcher<?> root_matcher, Instruction replacement) {
-        if (root_matcher instanceof InstructionReplaceMatcher) {
-            return replacement;
-        } else if (root_matcher instanceof StringConstantMatcher || root_matcher instanceof IntConstantMatcher) {
-            return value;
-        }
-        throw new IllegalStateException("Unsupported matcher " + root_matcher.getClass().getName());
+        return this.child == null ? (T) insn : this.child.match(ctx, insn);
     }
 
 }

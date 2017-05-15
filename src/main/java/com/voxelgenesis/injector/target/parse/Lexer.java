@@ -173,7 +173,7 @@ public class Lexer {
             case '/':
                 this.next = new ParseToken(TokenType.FORWARD_SLASH);
                 break;
-            case '=':
+            case '=': {
                 char nn = this.str.charAt(this.index);
                 if (nn == '=') {
                     this.index++;
@@ -182,6 +182,17 @@ public class Lexer {
                     this.next = new ParseToken(TokenType.EQUALS);
                 }
                 break;
+            }
+            case '!': {
+                char nn = this.str.charAt(this.index);
+                if (nn == '=') {
+                    this.index++;
+                    this.next = new ParseToken(TokenType.NOT_EQUALS);
+                } else {
+                    this.next = new ParseToken(TokenType.NOT);
+                }
+                break;
+            }
             default:
                 throw new IllegalStateException("Unexpected symbol '" + n + "'");
             }

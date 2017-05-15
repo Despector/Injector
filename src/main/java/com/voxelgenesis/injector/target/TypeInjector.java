@@ -70,11 +70,13 @@ public class TypeInjector {
                 }
                 MatchParser parser = new MatchParser(matcher, mth);
                 List<ClassTypeSignature> imports = inject.getValue("imports");
-                for (ClassTypeSignature im : imports) {
-                    String type = im.getDescriptor();
-                    type = type.substring(1, type.length() - 1);
-                    String simple = type.substring(type.lastIndexOf('/') + 1);
-                    parser.addImport(simple, im.getDescriptor());
+                if (imports != null) {
+                    for (ClassTypeSignature im : imports) {
+                        String type = im.getDescriptor();
+                        type = type.substring(1, type.length() - 1);
+                        String simple = type.substring(type.lastIndexOf('/') + 1);
+                        parser.addImport(simple, im.getDescriptor());
+                    }
                 }
                 InjectionMatcher imatcher = parser.parse();
                 itarget.addInjection(imatcher);

@@ -105,7 +105,7 @@ public class InjectionMatcher {
         MatchedStatements match = previous;
         if (stmt instanceof If) {
             If iif = (If) stmt;
-            MatchedStatements pos = match(iif.getIfBody());
+            MatchedStatements pos = match(iif.getBody());
             if (match != null && pos != null) {
                 throw new IllegalStateException();
             } else if (pos != null) {
@@ -119,11 +119,13 @@ public class InjectionMatcher {
                     match = pos;
                 }
             }
-            pos = match(iif.getElseBlock().getElseBody());
-            if (match != null && pos != null) {
-                throw new IllegalStateException();
-            } else if (pos != null) {
-                match = pos;
+            if (iif.getElseBlock() != null) {
+                pos = match(iif.getElseBlock().getBody());
+                if (match != null && pos != null) {
+                    throw new IllegalStateException();
+                } else if (pos != null) {
+                    match = pos;
+                }
             }
         } else if (stmt instanceof For) {
             For ffor = (For) stmt;

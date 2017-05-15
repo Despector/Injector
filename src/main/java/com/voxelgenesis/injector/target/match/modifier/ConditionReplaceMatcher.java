@@ -22,29 +22,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.voxelgenesis.injector.target.parse;
+package com.voxelgenesis.injector.target.match.modifier;
 
-public enum TokenType {
-    INJECTION_TOKEN,
+import org.spongepowered.despector.ast.insn.condition.Condition;
+import org.spongepowered.despector.transform.matcher.ConditionMatcher;
+import org.spongepowered.despector.transform.matcher.MatchContext;
 
-    IDENTIFIER,
-    INTEGER,
-    LONG,
-    FLOAT,
-    DOUBLE,
-    HEXADECIMAL,
-    STRING_CONSTANT,
+public class ConditionReplaceMatcher<T extends Condition> implements ConditionMatcher<T> {
 
-    EQUALS,
-    DOT,
-    COMMA,
-    SEMICOLON,
-    COLON,
-    RIGHT_PAREN,
-    LEFT_PAREN,
-    FORWARD_SLASH,
+    private final ConditionMatcher<T> child;
 
-    COMPARE_EQUALS,
-    NOT_EQUALS,
-    NOT,
+    public ConditionReplaceMatcher(ConditionMatcher<T> child) {
+        this.child = child;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public T match(MatchContext ctx, Condition insn) {
+        return this.child == null ? (T) insn : this.child.match(ctx, insn);
+    }
 }

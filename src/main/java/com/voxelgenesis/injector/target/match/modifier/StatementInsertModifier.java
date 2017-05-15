@@ -29,14 +29,23 @@ import org.spongepowered.despector.ast.Annotation;
 import org.spongepowered.despector.ast.Locals.Local;
 import org.spongepowered.despector.ast.Locals.LocalInstance;
 import org.spongepowered.despector.ast.insn.Instruction;
+import org.spongepowered.despector.ast.insn.condition.AndCondition;
+import org.spongepowered.despector.ast.insn.condition.BooleanCondition;
+import org.spongepowered.despector.ast.insn.condition.CompareCondition;
 import org.spongepowered.despector.ast.insn.condition.Condition;
+import org.spongepowered.despector.ast.insn.condition.OrCondition;
+import org.spongepowered.despector.ast.insn.cst.NullConstant;
 import org.spongepowered.despector.ast.insn.cst.StringConstant;
+import org.spongepowered.despector.ast.insn.var.LocalAccess;
 import org.spongepowered.despector.ast.stmt.Statement;
 import org.spongepowered.despector.ast.stmt.assign.LocalAssignment;
+import org.spongepowered.despector.ast.stmt.invoke.InstanceMethodInvoke;
+import org.spongepowered.despector.ast.stmt.invoke.StaticMethodInvoke;
 import org.spongepowered.despector.ast.type.MethodEntry;
 import org.spongepowered.despector.transform.matcher.MatchContext;
 import org.spongepowered.despector.util.TypeHelper;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,7 +60,7 @@ public class StatementInsertModifier implements InjectionModifier {
 
     @Override
     public void apply(List<Statement> statements, int start, int end, MethodEntry target, MatchContext match) {
-        Map<LocalInstance, LocalInstance> local_translation = buildLocalTranslation(target, match, start);
+        Map<LocalInstance, LocalInstance> local_translation = buildLocalTranslation(target, this.injector, match, start);
 
         for (int i = this.injector.getInstructions().size() - 2; i >= 0; i--) {
             Statement stmt = this.injector.getInstructions().get(i);
@@ -60,7 +69,7 @@ public class StatementInsertModifier implements InjectionModifier {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Statement> T translate(T stmt, Map<LocalInstance, LocalInstance> local_translation) {
+    public static <T extends Statement> T translate(T stmt, Map<LocalInstance, LocalInstance> local_translation) {
         Translator<T> trans = (Translator<T>) statement_translators.get(stmt.getClass());
         if (trans == null) {
             throw new IllegalStateException("No translator for statement type: " + stmt.getClass().getName());
@@ -69,7 +78,7 @@ public class StatementInsertModifier implements InjectionModifier {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Instruction> T translate(T stmt, Map<LocalInstance, LocalInstance> local_translation) {
+    public static <T extends Instruction> T translate(T stmt, Map<LocalInstance, LocalInstance> local_translation) {
         Translator<T> trans = (Translator<T>) instruction_translators.get(stmt.getClass());
         if (trans == null) {
             throw new IllegalStateException("No translator for instruction type: " + stmt.getClass().getName());
@@ -78,7 +87,7 @@ public class StatementInsertModifier implements InjectionModifier {
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends Condition> T translate(T stmt, Map<LocalInstance, LocalInstance> local_translation) {
+    public static <T extends Condition> T translate(T stmt, Map<LocalInstance, LocalInstance> local_translation) {
         Translator<T> trans = (Translator<T>) condition_translators.get(stmt.getClass());
         if (trans == null) {
             throw new IllegalStateException("No translator for condition type: " + stmt.getClass().getName());
@@ -86,17 +95,17 @@ public class StatementInsertModifier implements InjectionModifier {
         return trans.translate(stmt, local_translation);
     }
 
-    private Map<LocalInstance, LocalInstance> buildLocalTranslation(MethodEntry target, MatchContext match, int offs) {
+    public static Map<LocalInstance, LocalInstance> buildLocalTranslation(MethodEntry target, MethodEntry injector, MatchContext match, int offs) {
         Map<LocalInstance, LocalInstance> local_translation = new HashMap<>();
         int local_index = 0;
-        if (!this.injector.isStatic()) {
-            LocalInstance inj_this = this.injector.getLocals().getLocal(0).getParameterInstance();
+        if (!injector.isStatic()) {
+            LocalInstance inj_this = injector.getLocals().getLocal(0).getParameterInstance();
             LocalInstance target_this = target.getLocals().getLocal(0).getParameterInstance();
             local_translation.put(inj_this, target_this);
             local_index++;
         }
-        for (String p : TypeHelper.splitSig(this.injector.getDescription())) {
-            LocalInstance inj_param = this.injector.getLocals().getLocal(local_index).getParameterInstance();
+        for (String p : TypeHelper.splitSig(injector.getDescription())) {
+            LocalInstance inj_param = injector.getLocals().getLocal(local_index).getParameterInstance();
             boolean handled = false;
             for (Annotation anno : inj_param.getAnnotations()) {
                 if (anno.getType().getName().equals("com/voxelgenesis/injector/Local")) {
@@ -135,7 +144,7 @@ public class StatementInsertModifier implements InjectionModifier {
         }
         highest_local++;
         Map<Integer, Integer> local_index_mapping = new HashMap<>();
-        for (LocalInstance instance : this.injector.getLocals().getAllInstances()) {
+        for (LocalInstance instance : injector.getLocals().getAllInstances()) {
             if (local_translation.containsKey(instance)) {
                 continue;
             }
@@ -187,13 +196,56 @@ public class StatementInsertModifier implements InjectionModifier {
     }
 
     static {
-
         registerStatementTranslator(LocalAssignment.class, (stmt, locals) -> {
             LocalInstance mapped = locals.get(stmt.getLocal());
             return new LocalAssignment(mapped, translate(stmt.getValue(), locals));
         });
 
+        registerInstructionTranslator(InstanceMethodInvoke.class, (insn, locals) -> {
+            Instruction[] args = new Instruction[insn.getParameters().length];
+            for (int i = 0; i < insn.getParameters().length; i++) {
+                args[i] = translate(insn.getParameters()[i], locals);
+            }
+            Instruction callee = translate(insn.getCallee(), locals);
+            return new InstanceMethodInvoke(insn.getType(), insn.getMethodName(), insn.getMethodDescription(), insn.getOwner(), args, callee);
+        });
+        registerInstructionTranslator(LocalAccess.class, (insn, locals) -> {
+            LocalInstance mapped = locals.get(insn.getLocal());
+            return new LocalAccess(mapped);
+        });
+        registerInstructionTranslator(NullConstant.class, (insn, locals) -> NullConstant.NULL);
+        registerInstructionTranslator(StaticMethodInvoke.class, (insn, locals) -> {
+            Instruction[] args = new Instruction[insn.getParameters().length];
+            for (int i = 0; i < insn.getParameters().length; i++) {
+                args[i] = translate(insn.getParameters()[i], locals);
+            }
+            return new StaticMethodInvoke(insn.getMethodName(), insn.getMethodDescription(), insn.getOwner(), args);
+        });
         registerInstructionTranslator(StringConstant.class, (insn, locals) -> new StringConstant(insn.getConstant()));
+
+        registerConditionTranslator(AndCondition.class, (cond, locals) -> {
+            List<Condition> ops = new ArrayList<>();
+            for (Condition op : cond.getOperands()) {
+                ops.add(translate(op, locals));
+            }
+            return new AndCondition(ops);
+        });
+        registerConditionTranslator(BooleanCondition.class, (cond, locals) -> {
+            Instruction val = translate(cond.getConditionValue(), locals);
+            return new BooleanCondition(val, cond.isInverse());
+        });
+        registerConditionTranslator(CompareCondition.class, (cond, locals) -> {
+            Instruction left = translate(cond.getLeft(), locals);
+            Instruction right = translate(cond.getRight(), locals);
+            return new CompareCondition(left, right, cond.getOperator());
+        });
+        registerConditionTranslator(OrCondition.class, (cond, locals) -> {
+            List<Condition> ops = new ArrayList<>();
+            for (Condition op : cond.getOperands()) {
+                ops.add(translate(op, locals));
+            }
+            return new OrCondition(ops);
+        });
     }
 
 }

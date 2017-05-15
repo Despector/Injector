@@ -28,17 +28,25 @@ import static com.voxelgenesis.injector.target.parse.TokenType.*;
 
 import com.voxelgenesis.injector.target.match.InjectionMatcher;
 import com.voxelgenesis.injector.target.match.InjectionModifier;
+import com.voxelgenesis.injector.target.match.modifier.ConditionReplaceMatcher;
+import com.voxelgenesis.injector.target.match.modifier.ConditionValueModifier;
 import com.voxelgenesis.injector.target.match.modifier.InstructionReplaceMatcher;
 import com.voxelgenesis.injector.target.match.modifier.InstructionValueModifier;
 import com.voxelgenesis.injector.target.match.modifier.StatementInsertModifier;
 import org.spongepowered.despector.ast.generic.ClassTypeSignature;
 import org.spongepowered.despector.ast.insn.Instruction;
+import org.spongepowered.despector.ast.insn.condition.CompareCondition.CompareOperator;
+import org.spongepowered.despector.ast.insn.condition.Condition;
+import org.spongepowered.despector.ast.stmt.Statement;
+import org.spongepowered.despector.ast.stmt.branch.If;
 import org.spongepowered.despector.ast.stmt.misc.Return;
 import org.spongepowered.despector.ast.type.MethodEntry;
+import org.spongepowered.despector.transform.matcher.ConditionMatcher;
 import org.spongepowered.despector.transform.matcher.InstructionMatcher;
 import org.spongepowered.despector.transform.matcher.MatchContext;
 import org.spongepowered.despector.transform.matcher.StatementMatcher;
 import org.spongepowered.despector.transform.matcher.instruction.InstanceMethodInvokeMatcher;
+import org.spongepowered.despector.util.ConditionUtil;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -91,22 +99,35 @@ public class MatchParser {
             }
         }
         InjectionModifier modifier = null;
-        if (this.modifier_type == ModifierType.INSTRUCTION_REPLACE) {
-            modifier = new InstructionValueModifier(getValueReplace(), matchers.get(this.start));
-        } else if (this.modifier_type == ModifierType.STATEMENT_INSERT) {
+        switch (this.modifier_type) {
+        case INSTRUCTION_REPLACE:
+            modifier = new InstructionValueModifier(this.injector, matchers.get(this.start));
+            break;
+        case CONDITION_REPLACE:
+            modifier = new ConditionValueModifier(this.injector, matchers.get(this.start));
+            break;
+        case STATEMENT_INSERT:
             modifier = new StatementInsertModifier(this.injector);
+            break;
+        default:
+            throw new IllegalStateException();
         }
 
         return new InjectionMatcher(matchers, modifier, this.start, this.end);
     }
 
-    private Instruction getValueReplace() {
-        return ((Return) this.injector.getInstructions().get(0)).getValue().get();
-    }
-
     private StatementMatcher<?> parseStatement() {
         if (this.lexer.peekType() == IDENTIFIER) {
             ParseToken first = this.lexer.pop();
+            if (first.getToken().equals("if")) {
+                expect(LEFT_PAREN);
+                ConditionMatcher<?> condition = parseCondition();
+                expect(RIGHT_PAREN);
+                if (!this.lexer.hasNext()) {
+                    return StatementMatcher.ifThen().condition(condition).build();
+                }
+                throw new IllegalStateException();
+            }
             if (this.lexer.peekType() == LEFT_PAREN) {
                 throw new IllegalStateException(); // TODO
             }
@@ -151,8 +172,10 @@ public class MatchParser {
                     this.lexer.pop();
                     InstanceMethodInvokeMatcher.Builder mth = InstructionMatcher.instanceMethodInvoke().callee(owner).name(next.getToken());
                     if (this.lexer.peekType() != RIGHT_PAREN) {
+                        int param_index = 0;
                         while (true) {
                             InstructionMatcher<?> param = parseInstruction();
+                            mth.param(param_index, param);
                             if (this.lexer.peekType() == RIGHT_PAREN) {
                                 break;
                             }
@@ -179,6 +202,32 @@ public class MatchParser {
         return null;
     }
 
+    private ConditionMatcher<?> parseCondition() {
+        if (this.lexer.peekType() == INJECTION_TOKEN) {
+            this.lexer.pop();
+            this.start = this.end = this.index;
+            this.modifier_type = ModifierType.CONDITION_REPLACE;
+            if (this.lexer.peekType() == LEFT_PAREN) {
+                this.lexer.pop();
+                ConditionMatcher<?> child = parseCondition();
+                expect(RIGHT_PAREN);
+                return new ConditionReplaceMatcher<>(child);
+            }
+            error("Expected injection child");
+        }
+        InstructionMatcher<?> left = parseInstruction();
+        ParseToken operator = this.lexer.pop();
+        InstructionMatcher<?> right = parseInstruction();
+        switch (operator.getType()) {
+        case NOT_EQUALS:
+            return ConditionMatcher.compare().operator(CompareOperator.NOT_EQUAL).left(left).right(right).build();
+        default:
+            error("Invalid condition operator: " + operator.getType().name());
+        }
+        error("Expected condition");
+        return null;
+    }
+
     private InstructionMatcher<?> parseInstruction() {
         if (this.lexer.peekType() == INJECTION_TOKEN) {
             this.lexer.pop();
@@ -200,7 +249,10 @@ public class MatchParser {
         }
         if (this.lexer.peekType() == IDENTIFIER) {
             ParseToken next = this.lexer.pop();
-            return InstructionMatcher.localAccess().fromContext(next.getToken()).build();
+            if (next.getToken().equals("null")) {
+                return InstructionMatcher.nullConstant().build();
+            }
+            return InstructionMatcher.localAccess().allowMissing().fromContext(next.getToken()).build();
         }
         error("Expected instruction");
         return null;
@@ -208,6 +260,7 @@ public class MatchParser {
 
     private static enum ModifierType {
         INSTRUCTION_REPLACE,
+        CONDITION_REPLACE,
         STATEMENT_INSERT
     }
 
